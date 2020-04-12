@@ -1,9 +1,9 @@
 /**
  * \file
  *
- * \brief Board configuration.
+ * \brief SAME70 Xplained board configuration
  *
- * Copyright (c) 2012-2015 Atmel Corporation. All rights reserved.
+ * Copyright (C) 2015-2016 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -38,44 +38,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  * \asf_license_stop
- *
  */
 /*
  * Support and FAQ: visit <a href="http://www.atmel.com/design-support/">Atmel Support</a>
  */
 
-#ifndef CONF_BOARD_H_INCLUDED
-#define CONF_BOARD_H_INCLUDED
+#ifndef CONF_BOARD_H
+#define CONF_BOARD_H
 
-/** Enable Com Port. */
-#define CONF_BOARD_UART_CONSOLE
+/* Enable ICache and DCache */
+#define CONF_BOARD_ENABLE_CACHE
 
-//! [tc_define_peripheral]
-/* Use TC Peripheral 0. */
-#define TC             TC0
-#define TC_PERIPHERAL  0
-//! [tc_define_peripheral]
 
-//! [tc_define_ch1]
-/* Configure TC0 channel 1 as waveform output. */
-#define TC_CHANNEL_WAVEFORM 1
-#define ID_TC_WAVEFORM      ID_TC1
-#define PIN_TC_WAVEFORM     PIN_TC0_TIOA1
-#define PIN_TC_WAVEFORM_MUX PIN_TC0_TIOA1_MUX
-//! [tc_define_ch1]
-
-//! [tc_define_ch2]
-/* Configure TC0 channel 2 as capture input. */
-#define TC_CHANNEL_CAPTURE 2
-#define ID_TC_CAPTURE ID_TC2
-#define PIN_TC_CAPTURE PIN_TC0_TIOA2
-#define PIN_TC_CAPTURE_MUX PIN_TC0_TIOA2_MUX
-//! [tc_define_ch2]
-
-//! [tc_define_irq_handler]
-/* Use TC2_Handler for TC capture interrupt. */
-#define TC_Handler  TC2_Handler
-#define TC_IRQn     TC2_IRQn
-//! [tc_define_irq_handler]
-
-#endif /* CONF_BOARD_H_INCLUDED */
+#define SSD1306_DC_PIN               PIO_PB3_IDX
+#define SSD1306_RES_PIN              PIO_PC17_IDX
+#define GFX_MONO_UG_2832HSWEG04
+#define CONFIG_SSD1306_FRAMEBUFFER
+#endif /* CONF_BOARD_H */

@@ -262,12 +262,11 @@ int main (void)
 	sysclk_init();
 	delay_init();
 
-  // Init OLED
+	// Init OLED
 	gfx_mono_ssd1306_init();
   
-  // Escreve na tela um circulo e um texto
-	gfx_mono_draw_filled_circle(20, 16, 16, GFX_PIXEL_SET, GFX_WHOLE);
-  gfx_mono_draw_string("mundo", 50,16, &sysfont);
+	// Escreve na tela um circulo e um texto
+	gfx_mono_draw_string("5    10    1", 0, 0, &sysfont);
 
 	LED_init();
 	BUT_init();
@@ -313,8 +312,7 @@ int main (void)
 			flash_led3 = !flash_led3;
 			but3_flag = 0;
 		}
-		if(f_rtt_alarme){
-      
+		if(f_rtt_alarme){  
 			/*
 			* IRQ apos 5s -> 10*0.5
 			*/

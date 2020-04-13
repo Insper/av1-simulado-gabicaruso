@@ -55,6 +55,18 @@ volatile char tc0_flag = 0;
 volatile char tc1_flag = 0;
 volatile char tc2_flag = 0;
 
+// PROTOTYPES
+void but1_callback(void);
+void but2_callback(void);
+void but3_callback(void);
+void BUT_init(void);
+void LED_init(void);
+void TC_init(Tc * TC, int ID_TC, int TC_CHANNEL, int freq);
+void pin_toggle(Pio *pio, uint32_t mask);
+void TC0_Handler(void);
+void TC1_Handler(void);
+void TC2_Handler(void);
+
 // FUNCTIONS
 // but1 callback
 void but1_callback() {
@@ -224,20 +236,35 @@ int main (void)
 	TC_init(TC0, ID_TC1, 1, 10);
 	TC_init(TC0, ID_TC2, 2, 1);
 	
+	int flash_led1 = 0;
+	int flash_led2 = 0;
+	int flash_led3 = 0;
 	
   /* Insert application code here, after the board has been initialized. */
 	while(1) {
-		if(tc0_flag){
+		if(tc0_flag && flash_led1){
 			pin_toggle(LED1_PIO, LED1_IDX_MASK);
 			tc0_flag = 0;
 		}
-		if(tc1_flag){
+		if(tc1_flag && flash_led2){
 			pin_toggle(LED2_PIO, LED2_IDX_MASK);
 			tc1_flag = 0;
 		}
-		if(tc2_flag){
+		if(tc2_flag && flash_led3){
 			pin_toggle(LED3_PIO, LED3_IDX_MASK);
 			tc2_flag = 0;
+		}
+		if(but1_flag){
+			flash_led1 = !flash_led1;
+			but1_flag = 0;
+		}
+		if(but2_flag){
+			flash_led2 = !flash_led2;
+			but2_flag = 0;
+		}
+		if(but3_flag){
+			flash_led3 = !flash_led3;
+			but3_flag = 0;
 		}
 	}
 }

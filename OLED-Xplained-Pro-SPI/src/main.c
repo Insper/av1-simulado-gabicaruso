@@ -54,6 +54,7 @@ volatile int but3_flag = 0;
 volatile char tc0_flag = 0;
 volatile char tc1_flag = 0;
 volatile char tc2_flag = 0;
+volatile Bool f_rtt_alarme = false;
 
 // PROTOTYPES
 void but1_callback(void);
@@ -66,6 +67,7 @@ void pin_toggle(Pio *pio, uint32_t mask);
 void TC0_Handler(void);
 void TC1_Handler(void);
 void TC2_Handler(void);
+static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses);
 
 // FUNCTIONS
 // but1 callback
@@ -172,6 +174,28 @@ void TC_init(Tc * TC, int ID_TC, int TC_CHANNEL, int freq){
 	tc_start(TC, TC_CHANNEL);
 }
 
+// rtt init
+static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses)
+{
+	uint32_t ul_previous_time;
+
+	/* Configure RTT for a 1 second tick interrupt */
+	rtt_sel_source(RTT, false);
+	rtt_init(RTT, pllPreScale);
+	
+	ul_previous_time = rtt_read_timer_value(RTT);
+	while (ul_previous_time == rtt_read_timer_value(RTT));
+	
+	rtt_write_alarm_time(RTT, IrqNPulses+ul_previous_time);
+
+	/* Enable RTT interrupt */
+	NVIC_DisableIRQ(RTT_IRQn);
+	NVIC_ClearPendingIRQ(RTT_IRQn);
+	NVIC_SetPriority(RTT_IRQn, 0);
+	NVIC_EnableIRQ(RTT_IRQn);
+	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
+}
+
 // HANDLERS
 // tc0 handler
 void TC0_Handler(void){
@@ -215,6 +239,23 @@ void TC2_Handler(void){
 	tc2_flag = 1;
 }
 
+// rtt handler
+void RTT_Handler(void)
+{
+	uint32_t ul_status;
+
+	/* Get RTT status - ACK */
+	ul_status = rtt_get_status(RTT);
+
+	/* IRQ due to Time has changed */
+	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {  }
+
+	/* IRQ due to Alarm */
+	if ((ul_status & RTT_SR_ALMS) == RTT_SR_ALMS) {
+		f_rtt_alarme = true;                  // flag RTT alarme
+	}
+}
+
 int main (void)
 {
 	board_init();
@@ -240,17 +281,23 @@ int main (void)
 	int flash_led2 = 0;
 	int flash_led3 = 0;
 	
+	// Configure RTT...
+	f_rtt_alarme = true;
+	
+	int rtt_pause = 1;
+	
   /* Insert application code here, after the board has been initialized. */
 	while(1) {
-		if(tc0_flag && flash_led1){
+		pmc_sleep(SAM_PM_SMODE_SLEEP_WFI);
+		if(tc0_flag && flash_led1 && !rtt_pause){
 			pin_toggle(LED1_PIO, LED1_IDX_MASK);
 			tc0_flag = 0;
 		}
-		if(tc1_flag && flash_led2){
+		if(tc1_flag && flash_led2 && !rtt_pause){
 			pin_toggle(LED2_PIO, LED2_IDX_MASK);
 			tc1_flag = 0;
 		}
-		if(tc2_flag && flash_led3){
+		if(tc2_flag && flash_led3 && !rtt_pause){
 			pin_toggle(LED3_PIO, LED3_IDX_MASK);
 			tc2_flag = 0;
 		}
@@ -266,5 +313,19 @@ int main (void)
 			flash_led3 = !flash_led3;
 			but3_flag = 0;
 		}
+		if(f_rtt_alarme){
+      
+			/*
+			* IRQ apos 5s -> 10*0.5
+			*/
+			uint16_t pllPreScale = (int) (((float) 32768) / 4.0);
+			uint32_t irqRTTvalue = 19;
+      
+			// reinicia RTT para gerar um novo IRQ
+			RTT_init(pllPreScale, irqRTTvalue);         
+      
+			f_rtt_alarme = false;
+			rtt_pause = !rtt_pause;
+		}	
 	}
 }

@@ -55,6 +55,19 @@ volatile char tc0_flag = 0;
 volatile char tc1_flag = 0;
 volatile char tc2_flag = 0;
 volatile Bool f_rtt_alarme = false;
+//volatile char flag_rtt = 0;
+volatile char flag_rtc = 0;
+
+// Structs
+typedef struct  {
+	uint32_t year;
+	uint32_t month;
+	uint32_t day;
+	uint32_t week;
+	uint32_t hour;
+	uint32_t minute;
+	uint32_t seccond;
+} calendar;
 
 // PROTOTYPES
 void but1_callback(void);
@@ -68,6 +81,7 @@ void TC0_Handler(void);
 void TC1_Handler(void);
 void TC2_Handler(void);
 static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses);
+void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type);
 
 // FUNCTIONS
 // but1 callback
@@ -196,6 +210,27 @@ static void RTT_init(uint16_t pllPreScale, uint32_t IrqNPulses)
 	rtt_enable_interrupt(RTT, RTT_MR_ALMIEN);
 }
 
+void RTC_init(Rtc *rtc, uint32_t id_rtc, calendar t, uint32_t irq_type) {
+	/* Configura o PMC */
+	pmc_enable_periph_clk(ID_RTC);
+
+	/* Default RTC configuration, 24-hour mode */
+	rtc_set_hour_mode(rtc, 0);
+
+	/* Configura data e hora manualmente */
+	rtc_set_date(rtc, t.year, t.month, t.day, t.week);
+	rtc_set_time(rtc, t.hour, t.minute, t.seccond);
+
+	/* Configure RTC interrupts */
+	NVIC_DisableIRQ(id_rtc);
+	NVIC_ClearPendingIRQ(id_rtc);
+	NVIC_SetPriority(id_rtc, 0);
+	NVIC_EnableIRQ(id_rtc);
+
+	/* Ativa interrupcao via alarme */
+	rtc_enable_interrupt(rtc,  irq_type);
+}
+
 // HANDLERS
 // tc0 handler
 void TC0_Handler(void){
@@ -248,13 +283,45 @@ void RTT_Handler(void)
 	ul_status = rtt_get_status(RTT);
 
 	/* IRQ due to Time has changed */
-	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {  }
+	if ((ul_status & RTT_SR_RTTINC) == RTT_SR_RTTINC) {  
+		//flag_rtc = 1;
+	}
 
 	/* IRQ due to Alarm */
 	if ((ul_status & RTT_SR_ALMS) == RTT_SR_ALMS) {
 		f_rtt_alarme = true;                  // flag RTT alarme
 	}
 }
+
+void RTC_Handler(void) {
+	uint32_t ul_status = rtc_get_status(RTC);
+
+	/*
+	*  Verifica por qual motivo entrou
+	*  na interrupcao, se foi por segundo
+	*  ou Alarm
+	*/
+	if ((ul_status & RTC_SR_SEC) == RTC_SR_SEC) {
+		rtc_clear_status(RTC, RTC_SCCR_SECCLR);
+	}
+	
+	/* Time or date alarm */
+	if ((ul_status & RTC_SR_ALARM) == RTC_SR_ALARM) {
+		
+	}
+	
+	if ((ul_status & RTC_SR_SEC) == RTC_SR_SEC) {
+		rtc_clear_status(RTC, RTC_SCCR_SECCLR);
+		flag_rtc = 1;;
+	}
+	
+	rtc_clear_status(RTC, RTC_SCCR_ACKCLR);
+	rtc_clear_status(RTC, RTC_SCCR_TIMCLR);
+	rtc_clear_status(RTC, RTC_SCCR_CALCLR);
+	rtc_clear_status(RTC, RTC_SCCR_TDERRCLR);
+}
+
+// MAIN
 
 int main (void)
 {
@@ -284,6 +351,21 @@ int main (void)
 	f_rtt_alarme = true;
 	
 	int rtt_pause = 1;
+	
+	int x;
+	
+	/** Configura RTC */
+	calendar rtc_initial = {2020, 4, 15, 2, 14, 47, 20};
+	RTC_init(RTC, ID_RTC, rtc_initial, RTC_IER_ALREN | RTC_IER_SECEN);
+	rtc_set_hour_mode(RTC, 0);
+	int counter = 0;
+	char stringCounter[5][6] = {"*----", "**---", "***--", "****-", "*****"};
+	
+	// Time stuff
+	uint32_t hour;
+	uint32_t minute;
+	uint32_t second;
+	char timeBuffer[512];
 	
   /* Insert application code here, after the board has been initialized. */
 	while(1) {
@@ -324,6 +406,30 @@ int main (void)
       
 			f_rtt_alarme = false;
 			rtt_pause = !rtt_pause;
-		}	
+			
+		}
+		//if (flag_rtt){ 
+			//if(x == 60){
+				//x = 0;
+				//gfx_mono_draw_string("      ", -1, 4, &sysfont);
+			//}
+			//gfx_mono_draw_filled_circle(x, 0, 1, GFX_PIXEL_SET, GFX_WHOLE);
+			//x += 15;
+			//flag_rtt = 0;
+		//}
+		if (flag_rtc) {
+			gfx_mono_draw_string(stringCounter[counter], 0, 16, &sysfont);
+			
+			counter += 1;
+			if (counter > 4) {
+				counter = 0;
+			}
+			
+			rtc_get_time(RTC, &hour, &minute, &second);
+			sprintf(timeBuffer, "%2d:%2d:%2d", hour, minute, second);
+			gfx_mono_draw_string(timeBuffer, 50, 16, &sysfont);
+			
+			flag_rtc = 0;
+		}
 	}
 }
